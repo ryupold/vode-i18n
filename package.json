@@ -1,0 +1,68 @@
+{
+    "name": "@ryupold/vode-i18n",
+    "version": "0.1.0",
+    "description": "A library for internationalization (i18n) specifically for usage in vode based apps",
+    "private": false,
+    "keywords": [
+        "typescript",
+        "library",
+        "vode",
+        "internationalization",
+        "i18n",
+        "localization",
+        "l10n",
+        "translation",
+        "pluralization",
+        "formatting"
+    ],
+    "author": "ryupold",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ryupold/vode-i18n.git"
+    },
+    "bugs": {
+        "url": "https://github.com/ryupold/vode-i18n/issues"
+    },
+    "homepage": "https://github.com/ryupold/vode-i18n#readme",
+    "type": "module",
+    "files": [
+        "dist/"
+    ],
+    "exports": {
+        ".": {
+            "entrypoint": "./src/index.ts",
+            "types": "./dist/index.d.ts",
+            "browser": "./dist/vode-i18n.js",
+            "import": "./dist/vode-i18n.js"
+        }
+    },
+    "imports": {
+        "#src/*.js": "./src/*.ts"
+    },
+    "scripts": {
+        "types": "dts-bundle-generator -o ./dist/vode-i18n.d.ts ./index.ts --project tsconfig.json",
+        "build": "esbuild index.ts --bundle --format=esm --outfile=dist/vode-i18n.mjs",
+        "build-min": "esbuild index.ts --bundle --format=esm --minify --outfile=dist/vode-i18n.min.mjs",
+        "build-classic": "esbuild index.ts --outfile=dist/vode-i18n.js --bundle --format=iife --global-name=V",
+        "build-classic-min": "esbuild index.ts --outfile=dist/vode-i18n.min.js --bundle --format=iife  --global-name=V --minify",
+        "babel": "npx babel dist/vode-i18n.mjs --minified --out-file dist/vode-i18n.cjs.min.js",
+        "babel-classic": "npx babel dist/vode-i18n.js --config-file ./babel.es5.config.json --minified --out-file dist/vode-i18n.es5.min.js",
+        "release": "npm run build && npm run build-min && npm run build-classic && npm run build-classic-min && npm run babel && npm run babel-classic && npm run types",
+        "publish": "npm publish --access public",
+        "clean": "tsc -b --clean && node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+        "watch": "tsc -b -w",
+        "test": "tsc -p tsconfig.test.json && esbuild test/run-tests.ts --bundle --outfile=test/run-tests.js --platform=node && node test/run-tests.js"
+    },
+    "devDependencies": {
+        "@babel/cli": "8.0.1",
+        "@babel/core": "8.0.1",
+        "@babel/preset-env": "8.0.2",
+        "dts-bundle-generator": "9.5.1",
+        "esbuild": "0.28.1",
+        "typescript": "6.0.3"
+    },
+    "allowScripts": {
+        "esbuild": true
+    }
+}
