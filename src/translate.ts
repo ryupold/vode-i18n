@@ -1,8 +1,8 @@
-import { replaceArgsInString, replaceArgsInVode, type I18nArg, type I18nFirstArg } from "./arg.js";
-import type { FlatCatalog } from "./bake-flat-catalog.js";
-import type { I18nKey, I18nVodeKey } from "./key.js";
-import type { I18nPluralForm, I18nVodePluralForm } from "./plural-form.js";
-import type { ChildVode } from "./vode.js";
+import { replaceArgsInString, replaceArgsInVode, type I18nArg, type I18nFirstArg } from "./arg";
+import type { FlatCatalog } from "./bake-flat-catalog";
+import type { I18nKey, I18nVodeKey } from "./key";
+import type { I18nPluralForm, I18nVodePluralForm } from "./plural-form";
+import type { ChildVode } from "./vode";
 
 export function translateText<C extends {}>(
     ordinal: Intl.PluralRules,
@@ -12,23 +12,20 @@ export function translateText<C extends {}>(
     key: I18nKey<C>,
     pluralOrFirstArg?: I18nFirstArg,
     ...restArgs: I18nArg[]
-): string | null {
+): string | undefined {
     let raw = flatCatalog.get(key as I18nVodeKey<C>);
     if (raw === undefined && flatFallbackCatalog) {
         raw = flatFallbackCatalog.get(key as I18nVodeKey<C>);
     }
     if (raw === undefined) {
-        console.warn(
-            `Translation for key '${key}' not found neither in main nor in fallback catalog.`,
-        );
-        return null;
+        return undefined;
     }
 
     if (typeof raw === "string") {
         return replaceArgsInString(raw, pluralOrFirstArg as I18nArg, ...restArgs);
     } else if (raw && typeof raw === "object" && "_other" in raw) {
         let rules: Intl.PluralRules;
-        let value: any;
+        let value: number | string;
         if (typeof pluralOrFirstArg === "object") {
             if (pluralOrFirstArg.type === "ordinal") rules = ordinal;
             else rules = cardinal;
@@ -48,11 +45,10 @@ export function translateText<C extends {}>(
                 (raw as I18nPluralForm)[`_${pluralForm}`] || (raw as I18nPluralForm)._other;
         }
 
-        return replaceArgsInString(pluralText, value, ...restArgs);
+        return replaceArgsInString(pluralText, String(value), ...restArgs);
     }
 
-    console.warn(`Translation for key '${key}' is:`, raw);
-    return null;
+    return undefined;
 }
 
 export function translateVode<C extends {}>(
@@ -63,23 +59,20 @@ export function translateVode<C extends {}>(
     key: I18nVodeKey<C>,
     pluralOrFirstArg?: I18nFirstArg,
     ...restArgs: I18nArg[]
-): ChildVode | null {
+): ChildVode | undefined {
     let raw = flatCatalog.get(key);
     if (raw === undefined && flatFallbackCatalog) {
         raw = flatFallbackCatalog.get(key);
     }
     if (raw === undefined) {
-        console.warn(
-            `Translation for key '${key}' not found neither in main nor in fallback catalog.`,
-        );
-        return null;
+        return undefined;
     }
 
     if (typeof raw === "string") {
         return replaceArgsInString(raw, pluralOrFirstArg as I18nArg, ...restArgs);
     } else if (raw && typeof raw === "object" && "_other" in raw) {
         let rules: Intl.PluralRules;
-        let value: any;
+        let value: number | string;
         if (typeof pluralOrFirstArg === "object") {
             if (pluralOrFirstArg.type === "ordinal") rules = ordinal;
             else rules = cardinal;
@@ -94,7 +87,6 @@ export function translateVode<C extends {}>(
 
         if (!pluralTextOrVode) {
             const pluralForm = rules.select(value);
-
             pluralTextOrVode =
                 (raw as I18nVodePluralForm)[`_${pluralForm}`] || (raw as I18nVodePluralForm)._other;
         }
@@ -104,25 +96,48 @@ export function translateVode<C extends {}>(
             pluralTextOrVode = JSON.parse(JSON.stringify(pluralTextOrVode));
         }
 
-        return replaceArgsInVode(pluralTextOrVode, value, ...restArgs);
+        return replaceArgsInVode(pluralTextOrVode, String(value), ...restArgs);
     } else if (Array.isArray(raw)) {
         //make deep copy to avoid modifying original translation
         const copy = JSON.parse(JSON.stringify(raw)) as ChildVode;
         return replaceArgsInVode(copy, pluralOrFirstArg as I18nArg, ...restArgs);
     }
 
-    console.warn(`translation for key ${key} is:`, raw);
-    return null;
+    return undefined;
 }
 
 export function translateRaw<C extends {}>(
-    flatCatalog: FlatCatalog<C>,
-    flatFallbackCatalog: FlatCatalog<C> | undefined,
-    key: I18nVodeKey<C>,
+    catalog: C,
+    fallbackCatalog: Partial<C> | object | ((key: string) => unknown) | undefined,
+    key: string,
 ): any {
-    const raw = flatCatalog.get(key);
-    if (raw === undefined && flatFallbackCatalog) {
-        return flatFallbackCatalog.get(key);
+    let raw: any = undefined;
+    const path = key.split(".");
+
+    let current: any = catalog;
+    for (const segment of path) {
+        if (typeof current === "object" && current !== null) {
+            current = current[segment];
+        } else {
+            current = undefined;
+            break;
+        }
     }
+
+    raw = current;
+
+    if (raw === undefined && fallbackCatalog) {
+        current = fallbackCatalog;
+        for (const segment of path) {
+            if (typeof current === "object" && current !== null) {
+                current = current[segment];
+            } else {
+                current = undefined;
+                break;
+            }
+        }
+        raw = current;
+    }
+
     return raw;
 }

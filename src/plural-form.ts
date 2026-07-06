@@ -1,4 +1,4 @@
-import type { ChildVode } from "./vode.js";
+import type { ChildVode } from "./vode";
 
 /**
  * plural form for i18n texts
@@ -24,4 +24,17 @@ export interface I18nVodePluralForm {
     _two?: ChildVode;
     _few?: ChildVode;
     _many?: ChildVode;
+}
+
+/**
+ * plural form for i18n raw values
+ */
+export interface I18nRawPluralForm {
+    [n: number]: any;
+    _other: any;
+    _zero?: any;
+    _one?: any;
+    _two?: any;
+    _few?: any;
+    _many?: any;
 }

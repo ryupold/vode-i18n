@@ -1,6 +1,6 @@
 {
     "name": "@ryupold/vode-i18n",
-    "version": "0.1.0",
+    "version": "0.5.0",
     "description": "A library for internationalization (i18n) specifically for usage in vode based apps",
     "private": false,
     "keywords": [
@@ -52,7 +52,7 @@
         "publish": "npm publish --access public",
         "clean": "tsc -b --clean && node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
         "watch": "tsc -b -w",
-        "test": "tsc -p tsconfig.test.json && esbuild test/run-tests.ts --bundle --outfile=test/run-tests.js --platform=node && node test/run-tests.js"
+        "test": "tsc -p tsconfig.test.json && esbuild test/run-tests.ts --bundle --outfile=dist/run-tests.js --platform=node && node dist/run-tests.js"
     },
     "devDependencies": {
         "@babel/cli": "8.0.1",

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "preserve",
+    "module": "esnext",
     "moduleResolution": "bundler",
     "rootDir": ".",
     "outDir": "./dist",
@@ -10,7 +10,6 @@
     "declarationMap": true,
     "sourceMap": true,
     "strict": true,
-    "noUncheckedSideEffectImports": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,

@@ -1,9 +1,9 @@
-import { bakeFlatCatalog } from "./bake-flat-catalog.js";
-import { translateRaw, translateText, translateVode } from "./translate.js";
-import type { I18nKey, I18nVodeKey } from "./key.js";
-import type { I18nArg, I18nFirstArg } from "./arg.js";
-import type { I18nSubtree } from "./subtree.js";
-import type { ChildVode } from "./vode.js";
+import { bakeFlatCatalog, FlatCatalog } from "./bake-flat-catalog";
+import { translateRaw, translateText, translateVode } from "./translate";
+import type { I18nKey, I18nRawKey, I18nVodeKey } from "./key";
+import type { I18nArg, I18nFirstArg } from "./arg";
+import type { I18nSubtree } from "./subtree";
+import type { ChildVode } from "./vode";
 
 export type $TFunction<C extends {}> = (
     key: I18nKey<C>,
@@ -23,15 +23,20 @@ export type $VPrefixFunction<C extends {}> = <K extends I18nVodeKey<C>>(
     prefix: K,
 ) => $VFunction<I18nSubtree<C, K> & {}>;
 
-export type $RFunction<C extends {}> = (key: I18nVodeKey<C>) => any;
-export type $RPrefixFunction<C extends {}> = <K extends I18nVodeKey<C>>(
+export type $RFunction<C extends {}> = (key: I18nRawKey<C>) => any;
+export type $RPrefixFunction<C extends {}> = <K extends I18nRawKey<C>>(
     prefix: K,
 ) => $RFunction<I18nSubtree<C, K> & {}>;
 
 export interface I18nContext<C extends {}> {
-    readonly languageTag: string;
-    readonly catalog: C;
-    readonly fallbackCatalog?: C | undefined;
+    /**
+     * A string that is a valid [Unicode BCP 47 Locale Identifier](https://unicode.org/reports/tr35/#Unicode_locale_identifier).
+     *
+     * For example: "fa", "es-MX", "zh-Hant-TW".
+     *
+     * See [MDN - Intl - locales argument](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument).
+     */
+    readonly locale: Intl.UnicodeBCP47LocaleIdentifier;
 
     /**
      * Gets the translation as text for the given key.
@@ -83,25 +88,43 @@ export interface I18nContext<C extends {}> {
 }
 
 export interface CreateI18nContextOptions<C extends {}> {
-    languageTag: string;
+    /**
+     * A string that is a valid [Unicode BCP 47 Locale Identifier](https://unicode.org/reports/tr35/#Unicode_locale_identifier).
+     *
+     * For example: "fa", "es-MX", "zh-Hant-TW".
+     *
+     * See [MDN - Intl - locales argument](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument).
+     */
+    locale: Intl.UnicodeBCP47LocaleIdentifier;
+
+    /**
+     * The translation catalog to use for this context.
+     * An variably deep nested object that maps translation keys to their corresponding values.
+     */
     catalog: C;
-    fallbackCatalog?: C | undefined;
+
+    /**
+     * The fallback catalog to use for this context.
+     * This is used when a translation key is not found in the main catalog.
+     */
+    fallbackCatalog?: Partial<C> | object | ((key: string) => unknown) | undefined;
 }
 export function createI18nContext<C extends {}>(
     options: CreateI18nContextOptions<C>,
 ): I18nContext<C> {
-    const cardinal = new Intl.PluralRules(options.languageTag, { type: "cardinal" });
-    const ordinal = new Intl.PluralRules(options.languageTag, { type: "ordinal" });
+    const cardinal = new Intl.PluralRules(options.locale, { type: "cardinal" });
+    const ordinal = new Intl.PluralRules(options.locale, { type: "ordinal" });
 
     const flatCatalog = bakeFlatCatalog(options.catalog);
-    const flatFallbackCatalog = options.fallbackCatalog
-        ? bakeFlatCatalog(options.fallbackCatalog)
-        : undefined;
+    const flatFallbackCatalog =
+        typeof options.fallbackCatalog === "function"
+            ? ({ get: options.fallbackCatalog } as unknown as FlatCatalog<any>)
+            : !!options.fallbackCatalog && typeof options.fallbackCatalog === "object"
+              ? bakeFlatCatalog(options.fallbackCatalog)
+              : undefined;
 
     return {
-        languageTag: options.languageTag,
-        catalog: options.catalog,
-        fallbackCatalog: options.fallbackCatalog,
+        locale: options.locale,
         $T: (key, pluralOrFirstArg, ...restArgs) =>
             translateText(
                 ordinal,
@@ -111,7 +134,7 @@ export function createI18nContext<C extends {}>(
                 key,
                 pluralOrFirstArg,
                 ...restArgs,
-            ) || key,
+            )!,
         $TPrefix:
             (prefix) =>
             (key, pluralOrFirstArg, ...restArgs) =>
@@ -123,7 +146,7 @@ export function createI18nContext<C extends {}>(
                     `${prefix}.${key}` as I18nKey<C>,
                     pluralOrFirstArg,
                     ...restArgs,
-                ) || key,
+                )!,
         $V: (key, pluralOrFirstArg, ...restArgs) =>
             translateVode(
                 ordinal,
@@ -133,7 +156,7 @@ export function createI18nContext<C extends {}>(
                 key,
                 pluralOrFirstArg,
                 ...restArgs,
-            ) || key,
+            )!,
         $VPrefix:
             (prefix) =>
             (key, pluralOrFirstArg, ...restArgs) =>
@@ -145,10 +168,9 @@ export function createI18nContext<C extends {}>(
                     `${prefix}.${key}` as I18nVodeKey<C>,
                     pluralOrFirstArg,
                     ...restArgs,
-                ) || key,
-        $R: (key) => translateRaw(flatCatalog, flatFallbackCatalog, key) || key,
+                )!,
+        $R: (key) => translateRaw(options.catalog, options.fallbackCatalog, key),
         $RPrefix: (prefix) => (key) =>
-            translateRaw(flatCatalog, flatFallbackCatalog, `${prefix}.${key}` as I18nVodeKey<C>) ||
-            key,
+            translateRaw(options.catalog, options.fallbackCatalog, `${prefix}.${key}`),
     };
 }
