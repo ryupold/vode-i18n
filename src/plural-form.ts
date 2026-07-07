@@ -1,4 +1,4 @@
-import type { ChildVode } from "./vode";
+import type { ChildVode } from "./vode.js";
 
 /**
  * plural form for i18n texts

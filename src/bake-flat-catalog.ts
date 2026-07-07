@@ -1,5 +1,5 @@
-import type { I18nVodeKey } from "./key";
-import type { I18nVodePluralForm } from "./plural-form";
+import type { I18nVodeKey } from "./key.js";
+import type { I18nVodePluralForm } from "./plural-form.js";
 import type { ChildVode } from "./vode.js";
 
 export type FlatCatalog<C extends {}> = Map<I18nVodeKey<C>, ChildVode | I18nVodePluralForm>;
