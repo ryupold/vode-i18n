@@ -15,10 +15,12 @@ import { createI18nContext } from 'https://unpkg.com/@ryupold/vode-i18n/dist/vod
 
 ### IIFE
 
+Binds the library to the global `Vi18n` object.
+
 ```html
 <script src="https://unpkg.com/@ryupold/vode-i18n/dist/vode-i18n.es5.min.js"></script>
 <script>
-    const { createI18nContext } = V;
+    const { createI18nContext } = Vi18n;
 </script>
 ```
 
