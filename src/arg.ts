@@ -11,10 +11,7 @@ export type I18nFirstArg = I18nArg | { type: Intl.PluralRuleType; value: number 
 
 const PLACEHOLDER = /\{(\d+)\}/g;
 
-export function replaceArgsInString(
-    template: string,
-    ...args: (I18nArg | undefined)[]
-): string {
+export function replaceArgsInString(template: string, ...args: (I18nArg | undefined)[]): string {
     return template.replace(PLACEHOLDER, (placeholder, n: string) => {
         const arg = args[Number(n) - 1];
         return arg === undefined || arg === null ? placeholder : String(arg);
@@ -31,6 +28,7 @@ export function replaceArgsInVode(
         return replaceArgsInString(template, ...args);
     } else if (Array.isArray(template)) {
         const kidsStartIndex = childrenStart(template);
+        if (kidsStartIndex < 0) return template;
         for (let i = kidsStartIndex; i < template.length; i++) {
             const child = template[i] as ChildVode;
             (template as ChildVode[])[i] = replaceArgsInVode(child, ...args);
@@ -39,4 +37,3 @@ export function replaceArgsInVode(
     }
     return template;
 }
-

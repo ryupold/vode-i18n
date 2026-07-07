@@ -134,7 +134,7 @@ export function translateRaw<C extends {}>(
 
     let current: any = catalog;
     for (const segment of path) {
-        if (typeof current === "object" && current !== null) {
+        if (typeof current === "object" && current !== null && Object.hasOwn(current, segment)) {
             current = current[segment];
         } else {
             current = undefined;
@@ -147,7 +147,11 @@ export function translateRaw<C extends {}>(
     if (raw === undefined && fallbackCatalog) {
         current = fallbackCatalog;
         for (const segment of path) {
-            if (typeof current === "object" && current !== null) {
+            if (
+                typeof current === "object" &&
+                current !== null &&
+                Object.hasOwn(current, segment)
+            ) {
                 current = current[segment];
             } else {
                 current = undefined;

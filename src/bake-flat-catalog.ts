@@ -7,9 +7,9 @@ export type FlatCatalog<C extends {}> = Map<I18nVodeKey<C>, ChildVode | I18nVode
 export function bakeFlatCatalog<C extends {}>(strings: C): FlatCatalog<C> {
     const flatMap = new Map<I18nVodeKey<C>, ChildVode | I18nVodePluralForm>();
     function bakeRecursive(currentNode: Record<string | number, any>, prefix: string | undefined) {
-        for (const key of Object.keys(currentNode)) {
+        for (const key of Object.getOwnPropertyNames(currentNode)) {
             const value = currentNode[key];
-            if(value === undefined || value === null) continue;
+            if (value === undefined || value === null) continue;
             if (
                 typeof value === "string" || // text
                 Array.isArray(value) || // vode

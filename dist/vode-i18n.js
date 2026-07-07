@@ -29,7 +29,7 @@ var Vi18n = (() => {
   function bakeFlatCatalog(strings) {
     const flatMap = /* @__PURE__ */ new Map();
     function bakeRecursive(currentNode, prefix) {
-      for (const key of Object.keys(currentNode)) {
+      for (const key of Object.getOwnPropertyNames(currentNode)) {
         const value = currentNode[key];
         if (value === void 0 || value === null) continue;
         if (typeof value === "string" || // text
@@ -72,6 +72,7 @@ var Vi18n = (() => {
       return replaceArgsInString(template, ...args);
     } else if (Array.isArray(template)) {
       const kidsStartIndex = childrenStart(template);
+      if (kidsStartIndex < 0) return template;
       for (let i = kidsStartIndex; i < template.length; i++) {
         const child = template[i];
         template[i] = replaceArgsInVode(child, ...args);
@@ -162,7 +163,7 @@ var Vi18n = (() => {
     const path = key.split(".");
     let current = catalog;
     for (const segment of path) {
-      if (typeof current === "object" && current !== null) {
+      if (typeof current === "object" && current !== null && Object.hasOwn(current, segment)) {
         current = current[segment];
       } else {
         current = void 0;
@@ -173,7 +174,7 @@ var Vi18n = (() => {
     if (raw === void 0 && fallbackCatalog) {
       current = fallbackCatalog;
       for (const segment of path) {
-        if (typeof current === "object" && current !== null) {
+        if (typeof current === "object" && current !== null && Object.hasOwn(current, segment)) {
           current = current[segment];
         } else {
           current = void 0;
