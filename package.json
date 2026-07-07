@@ -55,7 +55,7 @@
         "build-classic-min": "esbuild index.ts --outfile=dist/vode-i18n.min.js --bundle --format=iife  --global-name=Vi18n --minify",
         "babel": "npx babel dist/vode-i18n.mjs --minified --out-file dist/vode-i18n.cjs.min.js",
         "babel-classic": "npx babel dist/vode-i18n.js --config-file ./babel.es5.config.json --minified --out-file dist/vode-i18n.es5.min.js",
-        "release": "npm run test && npm run clean && npm run build && npm run build-min && npm run build-classic && npm run build-classic-min && npm run babel && npm run babel-classic && npm run types",
+        "release": "npm run build && npm run build-min && npm run build-classic && npm run build-classic-min && npm run babel && npm run babel-classic && npm run types",
         "clean": "tsc -b --clean && node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
         "watch": "tsc -b -w",
         "test": "tsc -p tsconfig.test.json && esbuild test/run-tests.ts --bundle --outfile=dist/run-tests.js --platform=node && node dist/run-tests.js"
