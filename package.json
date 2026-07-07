@@ -1,6 +1,6 @@
 {
     "name": "@ryupold/vode-i18n",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "A library for internationalization (i18n) specifically for usage in vode based apps",
     "private": false,
     "keywords": [

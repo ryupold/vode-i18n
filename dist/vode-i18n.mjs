@@ -20,14 +20,25 @@ function bakeFlatCatalog(strings) {
   return flatMap;
 }
 
-// src/arg.ts
-function replaceArgsInString(template, ...args) {
-  let i = 1;
-  for (const arg of args) {
-    if (arg) template = template.replace(`{${i}}`, arg);
-    i++;
+// src/vode.ts
+var TEXT_NODE = 3;
+function childrenStart(vode) {
+  if (Array.isArray(vode) && vode.length > 1) {
+    const first = vode[1];
+    if (first && typeof first === "object" && !Array.isArray(first) && first.nodeType !== TEXT_NODE)
+      return vode.length > 2 ? 2 : -1;
+    else return 1;
   }
-  return template;
+  return -1;
+}
+
+// src/arg.ts
+var PLACEHOLDER = /\{(\d+)\}/g;
+function replaceArgsInString(template, ...args) {
+  return template.replace(PLACEHOLDER, (placeholder, n) => {
+    const arg = args[Number(n) - 1];
+    return arg === void 0 || arg === null ? placeholder : String(arg);
+  });
 }
 function replaceArgsInVode(template, ...args) {
   if (typeof template === "string") {
@@ -42,85 +53,84 @@ function replaceArgsInVode(template, ...args) {
   }
   return template;
 }
-var TEXT_NODE = 3;
-function childrenStart(vode) {
-  if (Array.isArray(vode) && vode.length > 1) {
-    const first = vode[1];
-    if (first && typeof first === "object" && !Array.isArray(first) && first.nodeType !== TEXT_NODE)
-      return vode.length > 2 ? 2 : -1;
-    else return 1;
-  }
-  return -1;
-}
 
 // src/translate.ts
-function translateText(ordinal, cardinal, flatCatalog, flatFallbackCatalog, key, pluralOrFirstArg, ...restArgs) {
+function selectPlural(ordinal, cardinal, plural, pluralOrFirstArg) {
+  let rules;
+  let value;
+  if (typeof pluralOrFirstArg === "object" && pluralOrFirstArg !== null) {
+    rules = pluralOrFirstArg.type === "ordinal" ? ordinal : cardinal;
+    value = pluralOrFirstArg.value;
+  } else {
+    rules = cardinal;
+    value = pluralOrFirstArg;
+  }
+  const entries = plural;
+  let selected = entries[value];
+  if (selected === void 0) {
+    const pluralForm = rules.select(value);
+    selected = entries[`_${pluralForm}`] ?? plural._other;
+  }
+  return { value, selected };
+}
+function firstArgValue(pluralOrFirstArg) {
+  return typeof pluralOrFirstArg === "object" && pluralOrFirstArg !== null ? pluralOrFirstArg.value : pluralOrFirstArg;
+}
+function deepCopy(value) {
+  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+}
+function translateText(ordinal, cardinal, flatCatalog, flatFallbackCatalog, onMissingKey, key, pluralOrFirstArg, ...restArgs) {
   let raw = flatCatalog.get(key);
   if (raw === void 0 && flatFallbackCatalog) {
     raw = flatFallbackCatalog.get(key);
   }
   if (raw === void 0) {
+    raw = onMissingKey?.(key);
+  }
+  if (raw === void 0) {
     return void 0;
   }
   if (typeof raw === "string") {
-    return replaceArgsInString(raw, pluralOrFirstArg, ...restArgs);
+    return replaceArgsInString(raw, firstArgValue(pluralOrFirstArg), ...restArgs);
   } else if (raw && typeof raw === "object" && "_other" in raw) {
-    let rules;
-    let value;
-    if (typeof pluralOrFirstArg === "object") {
-      if (pluralOrFirstArg.type === "ordinal") rules = ordinal;
-      else rules = cardinal;
-      value = pluralOrFirstArg.value;
-    } else {
-      rules = cardinal;
-      value = pluralOrFirstArg;
-    }
-    let pluralText = raw[value];
-    if (!pluralText) {
-      const pluralForm = rules.select(value);
-      pluralText = raw[`_${pluralForm}`] || raw._other;
-    }
-    return replaceArgsInString(pluralText, String(value), ...restArgs);
+    const { value, selected } = selectPlural(
+      ordinal,
+      cardinal,
+      raw,
+      pluralOrFirstArg
+    );
+    return replaceArgsInString(selected, String(value), ...restArgs);
   }
   return void 0;
 }
-function translateVode(ordinal, cardinal, flatCatalog, flatFallbackCatalog, key, pluralOrFirstArg, ...restArgs) {
+function translateVode(ordinal, cardinal, flatCatalog, flatFallbackCatalog, onMissingKey, key, pluralOrFirstArg, ...restArgs) {
   let raw = flatCatalog.get(key);
   if (raw === void 0 && flatFallbackCatalog) {
     raw = flatFallbackCatalog.get(key);
   }
   if (raw === void 0) {
+    raw = onMissingKey?.(key);
+  }
+  if (raw === void 0) {
     return void 0;
   }
   if (typeof raw === "string") {
-    return replaceArgsInString(raw, pluralOrFirstArg, ...restArgs);
+    return replaceArgsInString(raw, firstArgValue(pluralOrFirstArg), ...restArgs);
   } else if (raw && typeof raw === "object" && "_other" in raw) {
-    let rules;
-    let value;
-    if (typeof pluralOrFirstArg === "object") {
-      if (pluralOrFirstArg.type === "ordinal") rules = ordinal;
-      else rules = cardinal;
-      value = pluralOrFirstArg.value;
-    } else {
-      rules = cardinal;
-      value = pluralOrFirstArg;
-    }
-    let pluralTextOrVode = raw[value];
-    if (!pluralTextOrVode) {
-      const pluralForm = rules.select(value);
-      pluralTextOrVode = raw[`_${pluralForm}`] || raw._other;
-    }
-    if (Array.isArray(pluralTextOrVode)) {
-      pluralTextOrVode = JSON.parse(JSON.stringify(pluralTextOrVode));
-    }
-    return replaceArgsInVode(pluralTextOrVode, String(value), ...restArgs);
+    const { value, selected } = selectPlural(
+      ordinal,
+      cardinal,
+      raw,
+      pluralOrFirstArg
+    );
+    const vode = Array.isArray(selected) ? deepCopy(selected) : selected;
+    return replaceArgsInVode(vode, String(value), ...restArgs);
   } else if (Array.isArray(raw)) {
-    const copy = JSON.parse(JSON.stringify(raw));
-    return replaceArgsInVode(copy, pluralOrFirstArg, ...restArgs);
+    return replaceArgsInVode(deepCopy(raw), firstArgValue(pluralOrFirstArg), ...restArgs);
   }
   return void 0;
 }
-function translateRaw(catalog, fallbackCatalog, key) {
+function translateRaw(catalog, fallbackCatalog, onMissingKey, key) {
   let raw = void 0;
   const path = key.split(".");
   let current = catalog;
@@ -145,6 +155,9 @@ function translateRaw(catalog, fallbackCatalog, key) {
     }
     raw = current;
   }
+  if (raw === void 0) {
+    raw = onMissingKey?.(key);
+  }
   return raw;
 }
 
@@ -153,7 +166,7 @@ function createI18nContext(options) {
   const cardinal = new Intl.PluralRules(options.locale, { type: "cardinal" });
   const ordinal = new Intl.PluralRules(options.locale, { type: "ordinal" });
   const flatCatalog = bakeFlatCatalog(options.catalog);
-  const flatFallbackCatalog = typeof options.fallbackCatalog === "function" ? { get: options.fallbackCatalog } : !!options.fallbackCatalog && typeof options.fallbackCatalog === "object" ? bakeFlatCatalog(options.fallbackCatalog) : void 0;
+  const flatFallbackCatalog = !!options.fallbackCatalog && typeof options.fallbackCatalog === "object" ? bakeFlatCatalog(options.fallbackCatalog) : void 0;
   return {
     locale: options.locale,
     $T: (key, pluralOrFirstArg, ...restArgs) => translateText(
@@ -161,6 +174,7 @@ function createI18nContext(options) {
       cardinal,
       flatCatalog,
       flatFallbackCatalog,
+      options.onMissingKey,
       key,
       pluralOrFirstArg,
       ...restArgs
@@ -170,6 +184,7 @@ function createI18nContext(options) {
       cardinal,
       flatCatalog,
       flatFallbackCatalog,
+      options.onMissingKey,
       `${prefix}.${key}`,
       pluralOrFirstArg,
       ...restArgs
@@ -179,6 +194,7 @@ function createI18nContext(options) {
       cardinal,
       flatCatalog,
       flatFallbackCatalog,
+      options.onMissingKey,
       key,
       pluralOrFirstArg,
       ...restArgs
@@ -188,14 +204,21 @@ function createI18nContext(options) {
       cardinal,
       flatCatalog,
       flatFallbackCatalog,
+      options.onMissingKey,
       `${prefix}.${key}`,
       pluralOrFirstArg,
       ...restArgs
     ),
-    $R: (key) => translateRaw(options.catalog, options.fallbackCatalog, key),
-    $RPrefix: (prefix) => (key) => translateRaw(options.catalog, options.fallbackCatalog, `${prefix}.${key}`)
+    $R: (key) => translateRaw(options.catalog, options.fallbackCatalog, options.onMissingKey, key),
+    $RPrefix: (prefix) => (key) => translateRaw(
+      options.catalog,
+      options.fallbackCatalog,
+      options.onMissingKey,
+      `${prefix}.${key}`
+    )
   };
 }
 export {
+  childrenStart,
   createI18nContext
 };

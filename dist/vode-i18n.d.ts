@@ -13,6 +13,8 @@ export type Vode = [
  * subset of vodes ChildVode type without Component functions
  */
 export type ChildVode = Vode | string | false | null | undefined;
+/** index in vode at which child-vodes start */
+export declare function childrenStart(vode: ChildVode): 1 | 2 | -1;
 /**
  * plural form for i18n texts
  */
@@ -49,21 +51,34 @@ export interface I18nRawPluralForm {
 	_few?: any;
 	_many?: any;
 }
+/** dotted path to a text leaf (string or plural form) in the catalog */
 export type I18nKey<ObjectType> = {
-	[Key in keyof ObjectType & (string | number | bigint)]: ObjectType[Key] extends I18nPluralForm ? `${Key}` : ObjectType[Key] extends string ? `${Key}` : ObjectType[Key] extends object ? `${Key}` | `${Key}.${I18nKey<ObjectType[Key]>}` : never;
+	[Key in keyof ObjectType & (string | number | bigint)]: ObjectType[Key] extends I18nPluralForm ? `${Key}` : ObjectType[Key] extends string ? `${Key}` : ObjectType[Key] extends readonly unknown[] ? never : ObjectType[Key] extends object ? `${Key}.${I18nKey<ObjectType[Key]>}` : never;
 }[keyof ObjectType & (string | number | bigint)];
+/** dotted path to a vode, string, or plural form leaf in the catalog */
 export type I18nVodeKey<ObjectType> = {
-	[Key in keyof ObjectType & string]: ObjectType[Key] extends I18nVodePluralForm ? `${Key}` : ObjectType[Key] extends ChildVode | readonly unknown[] ? `${Key}` : ObjectType[Key] extends object ? `${Key}` | `${Key}.${I18nVodeKey<ObjectType[Key]>}` : never;
+	[Key in keyof ObjectType & string]: ObjectType[Key] extends {
+		_other: unknown;
+	} ? `${Key}` : ObjectType[Key] extends ChildVode | readonly unknown[] ? `${Key}` : ObjectType[Key] extends object ? `${Key}.${I18nVodeKey<ObjectType[Key]>}` : never;
 }[keyof ObjectType & string];
+/** dotted path to any value in the catalog */
 export type I18nRawKey<ObjectType> = {
 	[Key in keyof ObjectType & (string | number | bigint)]: ObjectType[Key] extends I18nRawPluralForm ? `${Key}` : ObjectType[Key] extends string | readonly unknown[] | ((...args: never[]) => unknown) ? `${Key}` : ObjectType[Key] extends object ? `${Key}` | `${Key}.${I18nRawKey<ObjectType[Key]>}` : `${Key}`;
 }[keyof ObjectType & (string | number | bigint)];
+/** dotted path to a nested subtree (non-leaf object) of the catalog,
+ * usable as prefix for $TPrefix / $VPrefix / $RPrefix */
+export type I18nSubtreeKey<ObjectType> = {
+	[Key in keyof ObjectType & (string | number | bigint)]: ObjectType[Key] extends {
+		_other: unknown;
+	} | string | readonly unknown[] | ((...args: never[]) => unknown) ? never : ObjectType[Key] extends object ? `${Key}` | `${Key}.${I18nSubtreeKey<ObjectType[Key]>}` : never;
+}[keyof ObjectType & (string | number | bigint)];
 /** argument that replaces {n} in translation */
-export type I18nArg = string;
+export type I18nArg = string | number;
 /** argument that replaces {1} in translation
  * and also selects plural form based on its value
+ * (a plain number is the same as { type: 'cardinal', value: number })
  */
-export type I18nFirstArg = I18nArg | number | {
+export type I18nFirstArg = I18nArg | {
 	type: Intl.PluralRuleType;
 	value: number;
 };
@@ -72,11 +87,14 @@ export type I18nFirstArg = I18nArg | number | {
  */
 export type I18nSubtree<ObjectType, K extends string> = K extends `${infer Head}.${infer Rest}` ? Head extends keyof ObjectType ? I18nSubtree<ObjectType[Head], Rest> : never : K extends keyof ObjectType ? ObjectType[K] : never;
 export type $TFunction<C extends {}> = (key: I18nKey<C>, pluralAndFirstArg?: I18nFirstArg, ...restArgs: I18nArg[]) => string;
-export type $TPrefixFunction<C extends {}> = <K extends I18nKey<C>>(prefix: K) => $TFunction<I18nSubtree<C, K> & {}>;
+export type $TPrefixFunction<C extends {}> = <K extends I18nSubtreeKey<C>>(prefix: K) => $TFunction<I18nSubtree<C, K> & {}>;
 export type $VFunction<C extends {}> = (key: I18nVodeKey<C>, pluralAndFirstArg?: I18nFirstArg, ...restArgs: I18nArg[]) => ChildVode;
-export type $VPrefixFunction<C extends {}> = <K extends I18nVodeKey<C>>(prefix: K) => $VFunction<I18nSubtree<C, K> & {}>;
+export type $VPrefixFunction<C extends {}> = <K extends I18nSubtreeKey<C>>(prefix: K) => $VFunction<I18nSubtree<C, K> & {}>;
 export type $RFunction<C extends {}> = (key: I18nRawKey<C>) => any;
-export type $RPrefixFunction<C extends {}> = <K extends I18nRawKey<C>>(prefix: K) => $RFunction<I18nSubtree<C, K> & {}>;
+export type $RPrefixFunction<C extends {}> = <K extends I18nSubtreeKey<C>>(prefix: K) => $RFunction<I18nSubtree<C, K> & {}>;
+export type DeepPartial<S> = {
+	[P in keyof S]?: S[P] extends Array<infer I> ? Array<DeepPartial<I>> : DeepPartial<S[P]>;
+};
 export interface I18nContext<C extends {}> {
 	/**
 	 * A string that is a valid [Unicode BCP 47 Locale Identifier](https://unicode.org/reports/tr35/#Unicode_locale_identifier).
@@ -91,7 +109,7 @@ export interface I18nContext<C extends {}> {
 	 * @param key A {@link I18nKey} that points to a string in the catalog.
 	 * @param pluralAndFirstArg Argument (a {@link I18nFirstArg}) that is used to select plural form and also replaces {1} in translation. If it is a number, it is treated as cardinal plural form.
 	 * @param restArgs Arguments to replace in the translation by index (e.g. {2} {3} {4})
-	 * @returns Translated string with replaced arguments if any. If the key is not found, the key itself is returned
+	 * @returns Translated string with replaced arguments if any. If the key is found in neither catalog, `undefined` is returned
 	 */
 	$T: $TFunction<C>;
 	/**
@@ -103,10 +121,10 @@ export interface I18nContext<C extends {}> {
 	$TPrefix: $TPrefixFunction<C>;
 	/**
 	 * Gets the translation as {@link ChildVode} for the given key.
-	 * @param key A {@link I18nVodeKey} that points to a string in the catalog.
+	 * @param key A {@link I18nVodeKey} that points to a vode, string, or plural form in the catalog.
 	 * @param pluralAndFirstArg Argument (a {@link I18nFirstArg}) that is used to select plural form and also replaces {1} in translation. If it is a number, it is treated as cardinal plural form.
 	 * @param restArgs Arguments to replace in the translation by index (e.g. {2} {3} {4})
-	 * @returns Translated string with replaced arguments if any. If the key is not found, the key itself is returned
+	 * @returns Translated {@link ChildVode} with replaced arguments if any. If the key is found in neither catalog, `undefined` is returned
 	 */
 	$V: $VFunction<C>;
 	/**
@@ -117,8 +135,8 @@ export interface I18nContext<C extends {}> {
 	 */
 	$VPrefix: $VPrefixFunction<C>;
 	/** Gets the raw value from the catalog for the given key.
-	 * @param key A {@link I18nKey} that points to a string in the catalog.
-	 * @returns The raw value at given key.
+	 * @param key A {@link I18nRawKey} that points to any value in the catalog.
+	 * @returns The raw value at given key. If the key is found in neither catalog, `undefined` is returned.
 	 */
 	$R: $RFunction<C>;
 	/**
@@ -147,7 +165,11 @@ export interface CreateI18nContextOptions<C extends {}> {
 	 * The fallback catalog to use for this context.
 	 * This is used when a translation key is not found in the main catalog.
 	 */
-	fallbackCatalog?: Partial<C> | object | ((key: string) => unknown) | undefined;
+	fallbackCatalog?: DeepPartial<C | Record<string, unknown>> | undefined;
+	/**
+	 * This is used when a translation key is not found in the main catalog and the fallback catalog.
+	 */
+	onMissingKey?: ((key: string) => unknown) | undefined;
 }
 export declare function createI18nContext<C extends {}>(options: CreateI18nContextOptions<C>): I18nContext<C>;
 
