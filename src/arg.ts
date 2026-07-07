@@ -1,28 +1,32 @@
 import type { ChildVode } from "./vode.js";
 
 /** argument that replaces {n} in translation */
-export type I18nArg = string;
+export type I18nArg = string | number;
 
 /** argument that replaces {1} in translation
  * and also selects plural form based on its value
+ * (a plain number is the same as { type: 'cardinal', value: number })
  */
-export type I18nFirstArg =
-    | I18nArg
-    | number // same as { type: 'cardinal', value: number }
-    | { type: Intl.PluralRuleType; value: number }; // number is will replace {1} in translation
+export type I18nFirstArg = I18nArg | { type: Intl.PluralRuleType; value: number };
 
-export function replaceArgsInString(template: string, ...args: I18nArg[]): string {
-    let i = 1;
-    for (const arg of args) {
-        if (arg) template = template.replace(`{${i}}`, arg);
-        i++;
-    }
-    return template;
+const PLACEHOLDER = /\{(\d+)\}/g;
+
+export function replaceArgsInString(
+    template: string,
+    ...args: (I18nArg | undefined)[]
+): string {
+    return template.replace(PLACEHOLDER, (placeholder, n: string) => {
+        const arg = args[Number(n) - 1];
+        return arg === undefined || arg === null ? placeholder : String(arg);
+    });
 }
 
 /** replaces template arguments in place
  * (so better make a deep copy before passing a vode here) */
-export function replaceArgsInVode(template: ChildVode, ...args: I18nArg[]): ChildVode {
+export function replaceArgsInVode(
+    template: ChildVode,
+    ...args: (I18nArg | undefined)[]
+): ChildVode {
     if (typeof template === "string") {
         return replaceArgsInString(template, ...args);
     } else if (Array.isArray(template)) {
