@@ -1,5 +1,5 @@
-import { createI18nContext } from "..";
-import { expect } from "./helper";
+import { createI18nContext } from "../index.js";
+import { expect } from "./helper.js";
 
 export default {
     "$T(key): returns the string mapped to the given key in the catalog": () => {
@@ -65,7 +65,7 @@ export default {
         expect($T("reversed", "world", "hello")).toEqual("hello before world");
     },
 
-    "$T(key, ...args): leaves placeholders untouched for missing or empty args": () => {
+    "$T(key, ...args): leaves placeholders untouched for missing args": () => {
         const { $T } = createI18nContext({
             locale: "en",
             catalog: {
@@ -74,7 +74,55 @@ export default {
         });
 
         expect($T("pair", "only one")).toEqual("only one and {2}");
-        expect($T("pair", "", "two")).toEqual("{1} and two");
+    },
+
+    "$T(key, ...args): falsy args still replace their placeholders": () => {
+        const { $T } = createI18nContext({
+            locale: "en",
+            catalog: {
+                pair: "{1} and {2}",
+                owe: "you owe {1}",
+            },
+        });
+
+        expect($T("pair", "", "two")).toEqual(" and two");
+        expect($T("owe", 0)).toEqual("you owe 0");
+    },
+
+    "$T(key, ...args): replaces every occurrence of a placeholder": () => {
+        const { $T } = createI18nContext({
+            locale: "en",
+            catalog: {
+                twice: "{1} and {1} again",
+            },
+        });
+
+        expect($T("twice", "Q")).toEqual("Q and Q again");
+    },
+
+    "$T(key, ...args): args are inserted verbatim ($-patterns, braces)": () => {
+        const { $T } = createI18nContext({
+            locale: "en",
+            catalog: {
+                owe: "you owe {1}",
+                pair: "{1} and {2}",
+            },
+        });
+
+        expect($T("owe", "$&5")).toEqual("you owe $&5");
+        // an inserted arg containing {2} must not be hit by the next arg
+        expect($T("pair", "{2}", "second")).toEqual("{2} and second");
+    },
+
+    "$T(key, ...args): accepts numbers as args": () => {
+        const { $T } = createI18nContext({
+            locale: "en",
+            catalog: {
+                summary: "Today {1} has accomplished {2} tasks",
+            },
+        });
+
+        expect($T("summary", "John", 2)).toEqual("Today John has accomplished 2 tasks");
     },
 
     "$T(key, ...args): ignores extra args without placeholders": () => {

@@ -1,5 +1,5 @@
-import { createI18nContext } from "..";
-import { expect } from "./helper";
+import { createI18nContext } from "../index.js";
+import { expect } from "./helper.js";
 
 const catalog = {
     menu: {

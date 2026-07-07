@@ -1,5 +1,5 @@
-import { createI18nContext } from "..";
-import { expect } from "./helper";
+import { createI18nContext } from "../index.js";
+import { expect } from "./helper.js";
 
 export default {
     "$T(key, {type: 'ordinal', value}): selects the plural form using ordinal rules": () => {
@@ -73,6 +73,21 @@ export default {
 
         expect($T("files", 1, "folder")).toEqual("one file in folder");
         expect($T("files", 3, "trash")).toEqual("3 files in trash");
+    },
+
+    "$T(key, n): empty-string plural entries are used instead of falling through to _other": () => {
+        const { $T } = createI18nContext({
+            locale: "en",
+            catalog: {
+                things: {
+                    0: "",
+                    _other: "{1} things",
+                },
+            },
+        });
+
+        expect($T("things", 0)).toEqual("");
+        expect($T("things", 2)).toEqual("2 things");
     },
 
     "$T(key, n): falls back to _other when the selected plural category is missing": () => {

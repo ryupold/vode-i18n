@@ -1,5 +1,5 @@
-import { createI18nContext } from "..";
-import { expect } from "./helper";
+import { createI18nContext } from "../index.js";
+import { expect } from "./helper.js";
 
 export default {
     "$V(key): returns the child-vode mapped to the given key in the catalog": () => {

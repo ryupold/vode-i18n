@@ -1,16 +1,16 @@
-import { bakeFlatCatalog, FlatCatalog } from "./bake-flat-catalog";
-import { translateRaw, translateText, translateVode } from "./translate";
-import type { I18nKey, I18nRawKey, I18nVodeKey } from "./key";
-import type { I18nArg, I18nFirstArg } from "./arg";
-import type { I18nSubtree } from "./subtree";
-import type { ChildVode } from "./vode";
+import { bakeFlatCatalog, FlatCatalog } from "./bake-flat-catalog.js";
+import { translateRaw, translateText, translateVode } from "./translate.js";
+import type { I18nKey, I18nRawKey, I18nSubtreeKey, I18nVodeKey } from "./key.js";
+import type { I18nArg, I18nFirstArg } from "./arg.js";
+import type { I18nSubtree } from "./subtree.js";
+import type { ChildVode } from "./vode.js";
 
 export type $TFunction<C extends {}> = (
     key: I18nKey<C>,
     pluralAndFirstArg?: I18nFirstArg,
     ...restArgs: I18nArg[]
 ) => string;
-export type $TPrefixFunction<C extends {}> = <K extends I18nKey<C>>(
+export type $TPrefixFunction<C extends {}> = <K extends I18nSubtreeKey<C>>(
     prefix: K,
 ) => $TFunction<I18nSubtree<C, K> & {}>;
 
@@ -19,14 +19,18 @@ export type $VFunction<C extends {}> = (
     pluralAndFirstArg?: I18nFirstArg,
     ...restArgs: I18nArg[]
 ) => ChildVode;
-export type $VPrefixFunction<C extends {}> = <K extends I18nVodeKey<C>>(
+export type $VPrefixFunction<C extends {}> = <K extends I18nSubtreeKey<C>>(
     prefix: K,
 ) => $VFunction<I18nSubtree<C, K> & {}>;
 
 export type $RFunction<C extends {}> = (key: I18nRawKey<C>) => any;
-export type $RPrefixFunction<C extends {}> = <K extends I18nRawKey<C>>(
+export type $RPrefixFunction<C extends {}> = <K extends I18nSubtreeKey<C>>(
     prefix: K,
 ) => $RFunction<I18nSubtree<C, K> & {}>;
+
+type DeepPartial<S> = {
+    [P in keyof S]?: S[P] extends Array<infer I> ? Array<DeepPartial<I>> : DeepPartial<S[P]>;
+};
 
 export interface I18nContext<C extends {}> {
     /**
@@ -43,7 +47,7 @@ export interface I18nContext<C extends {}> {
      * @param key A {@link I18nKey} that points to a string in the catalog.
      * @param pluralAndFirstArg Argument (a {@link I18nFirstArg}) that is used to select plural form and also replaces {1} in translation. If it is a number, it is treated as cardinal plural form.
      * @param restArgs Arguments to replace in the translation by index (e.g. {2} {3} {4})
-     * @returns Translated string with replaced arguments if any. If the key is not found, the key itself is returned
+     * @returns Translated string with replaced arguments if any. If the key is found in neither catalog, `undefined` is returned
      */
     $T: $TFunction<C>;
 
@@ -57,10 +61,10 @@ export interface I18nContext<C extends {}> {
 
     /**
      * Gets the translation as {@link ChildVode} for the given key.
-     * @param key A {@link I18nVodeKey} that points to a string in the catalog.
+     * @param key A {@link I18nVodeKey} that points to a vode, string, or plural form in the catalog.
      * @param pluralAndFirstArg Argument (a {@link I18nFirstArg}) that is used to select plural form and also replaces {1} in translation. If it is a number, it is treated as cardinal plural form.
      * @param restArgs Arguments to replace in the translation by index (e.g. {2} {3} {4})
-     * @returns Translated string with replaced arguments if any. If the key is not found, the key itself is returned
+     * @returns Translated {@link ChildVode} with replaced arguments if any. If the key is found in neither catalog, `undefined` is returned
      */
     $V: $VFunction<C>;
 
@@ -73,8 +77,8 @@ export interface I18nContext<C extends {}> {
     $VPrefix: $VPrefixFunction<C>;
 
     /** Gets the raw value from the catalog for the given key.
-     * @param key A {@link I18nKey} that points to a string in the catalog.
-     * @returns The raw value at given key.
+     * @param key A {@link I18nRawKey} that points to any value in the catalog.
+     * @returns The raw value at given key. If the key is found in neither catalog, `undefined` is returned.
      */
     $R: $RFunction<C>;
 
@@ -107,7 +111,12 @@ export interface CreateI18nContextOptions<C extends {}> {
      * The fallback catalog to use for this context.
      * This is used when a translation key is not found in the main catalog.
      */
-    fallbackCatalog?: Partial<C> | object | ((key: string) => unknown) | undefined;
+    fallbackCatalog?: DeepPartial<C | Record<string, unknown>> | undefined;
+
+    /**
+     * This is used when a translation key is not found in the main catalog and the fallback catalog.
+     */
+    onMissingKey?: ((key: string) => unknown) | undefined;
 }
 export function createI18nContext<C extends {}>(
     options: CreateI18nContextOptions<C>,
@@ -117,11 +126,9 @@ export function createI18nContext<C extends {}>(
 
     const flatCatalog = bakeFlatCatalog(options.catalog);
     const flatFallbackCatalog =
-        typeof options.fallbackCatalog === "function"
-            ? ({ get: options.fallbackCatalog } as unknown as FlatCatalog<any>)
-            : !!options.fallbackCatalog && typeof options.fallbackCatalog === "object"
-              ? bakeFlatCatalog(options.fallbackCatalog)
-              : undefined;
+        !!options.fallbackCatalog && typeof options.fallbackCatalog === "object"
+            ? (bakeFlatCatalog(options.fallbackCatalog) as FlatCatalog<C>)
+            : undefined;
 
     return {
         locale: options.locale,
@@ -131,6 +138,7 @@ export function createI18nContext<C extends {}>(
                 cardinal,
                 flatCatalog,
                 flatFallbackCatalog,
+                options.onMissingKey,
                 key,
                 pluralOrFirstArg,
                 ...restArgs,
@@ -143,6 +151,7 @@ export function createI18nContext<C extends {}>(
                     cardinal,
                     flatCatalog,
                     flatFallbackCatalog,
+                    options.onMissingKey,
                     `${prefix}.${key}` as I18nKey<C>,
                     pluralOrFirstArg,
                     ...restArgs,
@@ -153,10 +162,11 @@ export function createI18nContext<C extends {}>(
                 cardinal,
                 flatCatalog,
                 flatFallbackCatalog,
+                options.onMissingKey,
                 key,
                 pluralOrFirstArg,
                 ...restArgs,
-            )!,
+            ),
         $VPrefix:
             (prefix) =>
             (key, pluralOrFirstArg, ...restArgs) =>
@@ -165,12 +175,19 @@ export function createI18nContext<C extends {}>(
                     cardinal,
                     flatCatalog,
                     flatFallbackCatalog,
+                    options.onMissingKey,
                     `${prefix}.${key}` as I18nVodeKey<C>,
                     pluralOrFirstArg,
                     ...restArgs,
-                )!,
-        $R: (key) => translateRaw(options.catalog, options.fallbackCatalog, key),
+                ),
+        $R: (key) =>
+            translateRaw(options.catalog, options.fallbackCatalog, options.onMissingKey, key),
         $RPrefix: (prefix) => (key) =>
-            translateRaw(options.catalog, options.fallbackCatalog, `${prefix}.${key}`),
+            translateRaw(
+                options.catalog,
+                options.fallbackCatalog,
+                options.onMissingKey,
+                `${prefix}.${key}`,
+            ),
     };
 }

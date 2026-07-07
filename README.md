@@ -54,7 +54,7 @@ const { $T, $V } = createI18nContext({
         },
         banner: ["div", { class: "banner" }, "Welcome ", ["b", "{1}"]],
     },
-    fallbackCatalog: (key) => key, // return the key as-is if no translation is found
+    onMissingKey: (key) => key, // return the key as-is if no translation is found
 });
 
 $T("greeting", "John");     // "Hello, John!"
@@ -96,37 +96,39 @@ const i18n = createI18nContext({
 function createI18nContext<C>(options: {
     locale: Intl.UnicodeBCP47LocaleIdentifier;
     catalog: C;
-    fallbackCatalog?: Partial<C> | object | ((key: string) => unknown);
+    fallbackCatalog?: DeepPartial<C | Record<string, unknown>> | undefined;
+    onMissingKey?: (key: string) => unknown;
 }): I18nContext<C>
 ```
 
 - **`locale`**: a [BCP 47 locale identifier](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument) like `"en"`, `"es-MX"`, `"zh-Hant-TW"`. Used to pick the right plural rules.
 - **`catalog`**: your translation object. It is flattened once at creation, so lookups afterwards are a single `Map.get`.
-- **`fallbackCatalog`** *(optional)*: consulted whenever a key misses the main catalog. Either another catalog object (e.g. your primary language) or a function `(key: string) => string` to produce a fallback value.
+- **`fallbackCatalog`** *(optional)*: consulted whenever a key misses the main catalog.
+- **`onMissingKey`** *(optional)*: consulted whenever a key misses the main catalog and the fallback catalog is not defined.
 
 The returned context contains `locale` and the six functions below.
 
 ## Translate to text
 
 ```ts
-$T(key, pluralAndFirstArg?, ...restArgs): string
+$T(key, pluralAndFirstArg?, ...restArgs): string | undefined
 ```
 
 Looks up `key` and returns the translated string. Returns `undefined` if the key exists in neither catalog.
 
-**Placeholder arguments** fill `{1}`, `{2}`, … in order:
+**Placeholder arguments** (strings or numbers) fill `{1}`, `{2}`, … in order:
 
 ```ts
 const { $T } = createI18nContext({
     locale: "en",
     catalog: {
-        summary: "Today {1} has accomplished {2} tasks",
+        summary: "Today {1} finished {2}",
         reversed: "{2} before {1}",
     },
 });
 
-$T("summary", "John", "2");          // "Today John has accomplished 2 tasks"
-$T("reversed", "world", "hello");    // "hello before world"
+$T("summary", "John", "his homework"); // "Today John finished his homework"
+$T("reversed", "world", "hello");      // "hello before world"
 ```
 
 Placeholders without a matching argument stay in the text (`$T("summary", "John")` → `"Today John has accomplished {2} tasks"`), and extra arguments are silently ignored.
@@ -302,7 +304,7 @@ const { $T } = createI18nContext({
 
 - The main catalog always wins when both have the key.
 - Fallback values support everything the main catalog does: placeholders, plural forms, vodes.
-- A **function** can also fallback be provided to handle missing keys. It is good practice to return a default value indicating the key was not found. I usually return the key itself.
+- A **function** can also be provided as fallback to handle missing keys. It is good practice to return a default value indicating the key was not found. I usually return the key itself.
 
 ```ts
 createI18nContext({

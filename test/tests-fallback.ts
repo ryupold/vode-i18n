@@ -1,5 +1,5 @@
-import { createI18nContext } from "..";
-import { expect } from "./helper";
+import { createI18nContext } from "../index.js";
+import { expect } from "./helper.js";
 
 export default {
     "fallback catalog is used when key is not found in main catalog": () => {
@@ -74,14 +74,14 @@ export default {
         expect($V("hello" as any, "You")).toEqual(["b", "Hello You"]);
     },
 
-    "fallbackCatalog as function: is queried with the flat key when the main catalog misses": () => {
+    "onMissingKey: is queried with the flat key when the main catalog misses": () => {
         const seen: string[] = [];
         const { $T } = createI18nContext({
             locale: "en",
             catalog: {
                 foo: "bar",
             },
-            fallbackCatalog: (key: string) => {
+            onMissingKey: (key: string) => {
                 seen.push(key);
                 return `FB(${key})`;
             },
@@ -91,14 +91,14 @@ export default {
         expect(seen[0]).toEqual("missing.key");
     },
 
-    "fallbackCatalog as function: is not queried when the main catalog has the key": () => {
+    "onMissingKey: is not queried when the main catalog has the key": () => {
         const seen: string[] = [];
         const { $T } = createI18nContext({
             locale: "en",
             catalog: {
                 foo: "bar",
             },
-            fallbackCatalog: (key: string) => {
+            onMissingKey: (key: string) => {
                 seen.push(key);
                 return "FALLBACK";
             },
@@ -114,7 +114,7 @@ export default {
             catalog: {
                 foo: "bar",
             },
-            fallbackCatalog: () => 42,
+            onMissingKey: () => 42,
         });
 
         expect($T("anything" as any)).toEqual(undefined);

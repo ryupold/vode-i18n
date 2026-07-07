@@ -1,5 +1,5 @@
-import { tests } from ".";
-import { ExpectationError } from "./helper";
+import { tests } from "./index.js";
+import { ExpectationError } from "./helper.js";
 
 const count = {
     total: 0,
