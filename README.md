@@ -304,17 +304,19 @@ const { $T } = createI18nContext({
 
 - The main catalog always wins when both have the key.
 - Fallback values support everything the main catalog does: placeholders, plural forms, vodes.
-- A **function** can also be provided as fallback to handle missing keys. It is good practice to return a default value indicating the key was not found. I usually return the key itself.
+
+A function can also be provided as fallback to handle missing keys. It is called when neither the main catalog nor the fallback catalog has the key.
 
 ```ts
 createI18nContext({
     locale: "en",
     catalog: en,
-    fallbackCatalog: (key) => key,
+    fallbackCatalog: {},
+    onMissingKey: (key) => key,
 });
 ```
 
-If the key is found nowhere, `$T`/`$V`/`$R` return `undefined`.
+If nothing else is provided and the key is found nowhere, `$T`/`$V`/`$R` return `undefined`.
 
 ## Type safety
 
