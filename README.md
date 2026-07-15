@@ -230,7 +230,7 @@ $V("items", 4);
 Drop the result straight into your view:
 
 ```ts
-app(document.body, state, (s) => [DIV,
+app(container, state, (s) => [DIV,
     $V("banner", s.userName, s.appName),
 ]);
 ```
