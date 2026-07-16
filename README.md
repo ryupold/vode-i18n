@@ -102,9 +102,9 @@ function createI18nContext<C>(options: {
 ```
 
 - **`locale`**: a [BCP 47 locale identifier](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument) like `"en"`, `"es-MX"`, `"zh-Hant-TW"`. Used to pick the right plural rules.
-- **`catalog`**: your translation object. It is flattened once at creation, so lookups afterwards are a single `Map.get`.
+- **`catalog`**: your translation object (readonly).
 - **`fallbackCatalog`** *(optional)*: consulted whenever a key misses the main catalog.
-- **`onMissingKey`** *(optional)*: consulted whenever a key misses the main catalog and the fallback catalog is not defined.
+- **`onMissingKey`** *(optional)*: consulted whenever a key misses the main catalog and the fallback catalog.
 
 The returned context contains `locale` and the six functions below.
 
@@ -238,7 +238,6 @@ app(container, state, (s) => [DIV,
 Notes:
 
 - Placeholders are replaced in **children** (recursively), never in props: a `{1}` inside `class` or `style` stays as-is.
-- The vode is deep-copied before replacement, so the catalog is never mutated.
 - Plain strings work with `$V` too; it simply returns the translated string.
 
 ## Raw catalog access
@@ -305,7 +304,7 @@ const { $T } = createI18nContext({
 - The main catalog always wins when both have the key.
 - Fallback values support everything the main catalog does: placeholders, plural forms, vodes.
 
-A function can also be provided as fallback to handle missing keys. It is called when neither the main catalog nor the fallback catalog has the key.
+A function can also be provided as fallback to handle missing keys. It is called when neither the main catalog nor the fallback catalog has the key. It can return anything that can be inside a catalog.
 
 ```ts
 createI18nContext({
@@ -318,20 +317,13 @@ createI18nContext({
 
 If nothing else is provided and the key is found nowhere, `$T`/`$V`/`$R` return `undefined`.
 
-## Type safety
+## Catalog mutation
 
-The key types are derived from your catalog with template literal types:
+Currently not supported as the catalog passed
+to `createI18nContext()`is baked into a flat structure.
 
-- `$T` only accepts paths that lead to a string or plural form
-- `$V` only accepts paths that lead to a vode, string, or vode plural form
-- `$R` accepts any path in the catalog
-
-## Development
-
-```sh
-npm run test      # compile & run the test suite
-npm run release   # build all dist variants (ESM, IIFE, minified, ES5) + type declarations
-```
+If you want to update the catalog at runtime
+you need to call `createI18nContext` again with the updated object.
 
 ---
 
