@@ -2,8 +2,8 @@
 
 Internationalization (i18n) library for [vode](https://ryupold.de/post/vode) based apps.
 
-Support for plurals (utilizing [`Intl.PluralRules`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl/PluralRules)).
-Translations can even be [vodes](#translations-as-vodes).
+Support for deeply nested json catalogs with plurals support (utilizing [`Intl.PluralRules`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl/PluralRules)).
+Templating with variadic arguments and translations can even be [vodes](#translations-as-vodes).
 
 ## Usage
 
